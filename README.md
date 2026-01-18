@@ -11,19 +11,17 @@ This project implements a Retrieval-Augmented Generation (RAG) chatbot that answ
 - Optional LLM-based answer generation (API key not included)
 - Streamlit-based user interface
 
-## Knowledge Base Scope
-The chatbot is designed to answer questions related to:
-- Mobile data synchronization
-- Group and user permissions
+## Knowledge Base
+The chatbot demonstrates retrieval-augmented question answering over a small set of example PDF documents.
+The documents represent general technical documentation topics such as system synchronization and access control.
 
-Questions outside this scope may not return relevant results.
+For best results, questions should align with the content of the provided documentation.
 
 ## Setup Instructions
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ## Repository Notes
-
 This repository intentionally excludes:
 - PDF documents (customer-facing documentation)
 - API keys or environment files

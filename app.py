@@ -23,7 +23,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🛠️ Fix-It RAG Bot")
-st.caption("Ask questions about **Mobile Sync** and **Group Permissions** documentation.")
+st.caption("RAG chatbot over example technical documentation PDFs (synchronization and permissions examples)")
 
 st.sidebar.header("Settings")
 k = st.sidebar.slider("Top-K retrieved chunks", 1, 4, 1)

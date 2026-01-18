@@ -67,9 +67,13 @@ def build_vectorstore(text: str):
 # -------------------------------
 # Load PDFs at startup
 # -------------------------------
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+
 PDF_PATHS = [
-    "docs/mobile_sync_troubleshooting.pdf",
-    "docs/Manage Group Permissions.pdf",
+    BASE_DIR / "docs" / "mobile_sync_troubleshooting_v1.pdf",
+    BASE_DIR / "docs" / "scribe_group_permissions_v1.pdf",
 ]
 
 st.session_state.setdefault("vectorstore", None)
@@ -78,7 +82,12 @@ st.session_state.setdefault("chunks", None)
 if st.session_state.vectorstore is None:
     with st.spinner("Loading PDF knowledge base..."):
         all_text = []
+
         for path in PDF_PATHS:
+            if not path.exists():
+                st.error(f"Missing file: {path}")
+                st.stop()
+
             all_text.append(extract_text_from_pdf(path))
             all_text.append("\n\n=== DOCUMENT BREAK ===\n\n")
 

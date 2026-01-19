@@ -170,7 +170,7 @@ if st.button("Get Answer") and question:
         print("DEBUG score:", best_score)  # temporary
 
         if best_score is weak:
-            return SAFE_MESSAGE
+           return SAFE_MESSAGE
 
         kept = []
         for d, score in docs_with_scores:

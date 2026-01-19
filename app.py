@@ -245,18 +245,21 @@ if st.button("Get Answer") and question:
             f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
             unsafe_allow_html=True,
         )
-else:
-    context = "\n\n".join(t for t, _ in kept)
 
-    st.markdown(
-        '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
+    else:
+        context = "\n\n".join(t for t, _ in kept)
 
-    if show_context:
-        with st.expander("Retrieved context (with scores)"):
-            for t, s in kept:
-                st.write(f"Score: {s:.4f}")
-                st.text(t)
-                st.divider()
+        st.markdown(
+            '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True
+        )
+
+        if show_context:
+            with st.expander("Retrieved context (with scores)"):
+                for t, s in kept:
+                    st.write(f"Score: {s:.4f}")
+                    st.text(t)
+                    st.divider()

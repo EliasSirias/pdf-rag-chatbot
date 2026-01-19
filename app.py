@@ -155,9 +155,9 @@ if st.button("Get Answer") and question:
         st.error("Knowledge base not loaded.")
     else:
         docs_with_scores = st.session_state.vectorstore.similarity_search_with_score(question, k=k)
-	SAFE_MESSAGE = (
-             "This information isn’t found in the available documentation.\n"
-             "Please refer to the source material or your tenant configuration."
+        SAFE_MESSAGE = (
+            "This information isn’t found in the available documentation.\n"
+            "Please refer to the source material or your tenant configuration."
         )
 
         results = vectorstore.similarity_search_with_score(question, k=4)

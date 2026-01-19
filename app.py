@@ -183,7 +183,7 @@ if st.button("Get Answer") and question:
 
 
         kept = []
-	   st.write("DEBUG kept_count:", len(kept))
+        st.write("DEBUG kept_count:", len(kept))
         for d, score in docs_with_scores:
             text = d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
             if text and score <= max_distance:

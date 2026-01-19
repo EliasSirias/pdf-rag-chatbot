@@ -169,13 +169,11 @@ if st.button("Get Answer") and question:
         st.error("Knowledge base not loaded.")
     else:
         docs_with_scores = st.session_state.vectorstore.similarity_search_with_score(question, k=k)
+
         SAFE_MESSAGE = (
-            "This information isn’t found in the available documentation.\n"
+            "This information isn’t found in the available documentation.<br>"
             "Please refer to the source material or your tenant configuration."
         )
-
-        # Use the vectorstore you already have in session_state
-        results = st.session_state.vectorstore.similarity_search_with_score(question, k=4)
 
         if not docs_with_scores:
             st.markdown(
@@ -186,15 +184,6 @@ if st.button("Get Answer") and question:
 
         best_doc, best_score = docs_with_scores[0]
         print("DEBUG best_score:", best_score)
-
-        # TEMP: "weak" threshold — we'll tune after you see the scores
-        #if best_score > 0.6:
-            #st.markdown(
-                #f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
-                #unsafe_allow_html=True
-            #)
-            #st.stop()
-
 
         kept = []
         for d, score in docs_with_scores:
@@ -212,33 +201,34 @@ if st.button("Get Answer") and question:
         passes_keywords = keyword_overlap_ok(question, kept_texts)
         passes_scope = scope_coverage_ok(question, kept_texts)
 
-if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
-    if not passes_scope:
-        msg = (
-            "I found documentation related to your topic, but it doesn’t cover the "
-            "**tenant-specific** part of your question.<br>"
-            "Please check tenant configuration or provide tenant-scoped documentation."
-        )
-    else:
-        msg = NOT_FOUND_MESSAGE
+        # ✅ THIS BLOCK MUST BE INDENTED INSIDE THE BUTTON HANDLER
+        if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
+            if not passes_scope:
+                msg = (
+                    "I found documentation related to your topic, but it doesn’t cover the "
+                    "**tenant-specific** part of your question.<br>"
+                    "Please check tenant configuration or provide tenant-scoped documentation."
+                )
+            else:
+                msg = NOT_FOUND_MESSAGE
 
-    st.markdown(
-        f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
-        unsafe_allow_html=True
-    )
+            st.markdown(
+                f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
+                unsafe_allow_html=True
+            )
 
-else:
-    context = "\n\n".join(t for t, _ in kept)
+        else:
+            context = "\n\n".join(t for t, _ in kept)
 
+            st.markdown(
+                '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
+                unsafe_allow_html=True
+            )
+            st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
-        unsafe_allow_html=True
-    )
-    st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
-    if show_context:
-        with st.expander("Retrieved context (with scores)"):
-            for t, s in kept:
-                st.write(f"Score: {s:.4f}")
-                st.text(t)
-                st.divider()
+            if show_context:
+                with st.expander("Retrieved context (with scores)"):
+                    for t, s in kept:
+                        st.write(f"Score: {s:.4f}")
+                        st.text(t)
+                        st.divider()

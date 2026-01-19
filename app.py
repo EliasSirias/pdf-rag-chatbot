@@ -1,6 +1,7 @@
 import streamlit as st
 import pdfplumber
 import pytesseract
+import re
 from pathlib import Path
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -47,8 +48,8 @@ min_hit_count = st.sidebar.slider("Min matching chunks required", 1, 4, 1)
 # For LangChain FAISS, score is often L2 distance (lower = better). Tune as needed.
 
 show_context = st.sidebar.checkbox("Show retrieved context", value=False)
-st.sidebar.caption("Default strictness tuned for documentation accuracy (1.50)")
-DEFAULT_MAX_DISTANCE = 1.50
+st.sidebar.caption("Default strictness tuned for documentation accuracy (1.25)")
+DEFAULT_MAX_DISTANCE = 1.25
 max_distance = st.sidebar.slider(
     "Max distance allowed (lower = stricter)",
     0.2,
@@ -57,6 +58,21 @@ max_distance = st.sidebar.slider(
     0.05
 )
 
+# -------------------------------
+# Keyword overlap guardrail
+# -------------------------------
+def keyword_overlap_ok(question: str, kept_texts: list[str]) -> bool:
+    # Extract simple keywords (>=3 chars). Keeps acronyms like SSO.
+    q_terms = set(re.findall(r"[A-Za-z]{3,}", question.lower()))
+    if not q_terms:
+        return True
+
+    ctx_terms = set(
+        re.findall(r"[A-Za-z]{3,}", " ".join(kept_texts).lower())
+    )
+
+    # Require at least one meaningful shared term
+    return len(q_terms.intersection(ctx_terms)) >= 1
 
 # -------------------------------
 # PDF Extraction (Text + OCR)
@@ -151,7 +167,10 @@ if st.button("Get Answer") and question:
             unsafe_allow_html=True
         )
 
-        if len(kept) < min_hit_count:
+        kept_texts = [t for t, _ in kept]
+        passes_keywords = keyword_overlap_ok(question, kept_texts)
+
+        if len(kept) < min_hit_count or not passes_keywords:
             st.markdown(
                 f'<div class="chat-bubble bot"><b>Bot:</b><br>{NOT_FOUND_MESSAGE}</div>',
                 unsafe_allow_html=True

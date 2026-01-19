@@ -87,6 +87,19 @@ def scope_coverage_ok(question: str, kept_texts: list[str]) -> bool:
 
     # You can add more scopes later (version/env/role) the same way.
     return True
+def multi_intent_coverage_ok(question: str, kept_texts: list[str]) -> bool:
+    q = question.lower()
+    ctx = " ".join(kept_texts).lower()
+
+    asks_sync = bool(re.search(r"\bsync\b|\bsynchroniz", q))
+    asks_perms = bool(re.search(r"\bpermission\b|\bpermissions\b|\bgroup\b", q))
+
+    if asks_sync and asks_perms:
+        has_sync = bool(re.search(r"\bsync\b|\bsynchroniz", ctx))
+        has_perms = bool(re.search(r"\bpermission\b|\bpermissions\b|\bgroup\b", ctx))
+        return has_sync and has_perms
+
+    return True
 
 # -------------------------------
 # PDF Extraction (Text + OCR)
@@ -200,7 +213,7 @@ if st.button("Get Answer") and question:
         kept_texts = [t for t, _ in kept]
         passes_keywords = keyword_overlap_ok(question, kept_texts)
         passes_scope = scope_coverage_ok(question, kept_texts)
-
+        passes_multi = multi_intent_coverage_ok(question, kept_texts)
         # ✅ THIS BLOCK MUST BE INDENTED INSIDE THE BUTTON HANDLER
         if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
             if not passes_scope:

@@ -224,7 +224,11 @@ if st.button("Get Answer") and question:
                 )
             else:
                 msg = NOT_FOUND_MESSAGE
-
+            if not passes_multi:
+                msg = (
+                    "I found documentation about permissions, but it does not cover the **sync** part of your question.<br>"
+                    "Please provide documentation that links sync behavior with permissions, or rephrase the question to one topic."
+                )
             st.markdown(
                 f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
                 unsafe_allow_html=True

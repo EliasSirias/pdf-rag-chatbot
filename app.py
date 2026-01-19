@@ -160,17 +160,27 @@ if st.button("Get Answer") and question:
             "Please refer to the source material or your tenant configuration."
         )
 
-        results = vectorstore.similarity_search_with_score(question, k=4)
+        # Use the vectorstore you already have in session_state
+        results = st.session_state.vectorstore.similarity_search_with_score(question, k=4)
 
         if not results:
-           return SAFE_MESSAGE
+            st.markdown(
+                f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
+                unsafe_allow_html=True
+            )
+            st.stop()
 
         best_doc, best_score = results[0]
+        print("DEBUG best_score:", best_score)
 
-        print("DEBUG score:", best_score)  # temporary
+        # TEMP: "weak" threshold — we'll tune after you see the scores
+        if best_score > 0.6:
+            st.markdown(
+                f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
+                unsafe_allow_html=True
+            )
+            st.stop()
 
-        if best_score is weak:
-           return SAFE_MESSAGE
 
         kept = []
         for d, score in docs_with_scores:

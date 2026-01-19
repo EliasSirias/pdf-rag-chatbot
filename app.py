@@ -13,12 +13,13 @@ from langchain_huggingface import HuggingFaceEmbeddings
 # -------------------------------
 st.set_page_config(page_title="Fix-It RAG Bot", page_icon="🛠️")
 
-#PROJECT_CODENAME = "YV"
+# PROJECT_CODENAME = "YV"
 
 # -------------------------------
 # UI Style
 # -------------------------------
-st.markdown("""
+st.markdown(
+    """
 <style>
 .block-container { padding-top: 2rem; max-width: 950px; }
 .stButton>button { border-radius: 14px; padding: 0.6rem 1rem; font-weight: 600; }
@@ -27,11 +28,15 @@ border: 1px solid rgba(49,51,63,0.2); }
 .user { background: rgba(0, 122, 255, 0.08); }
 .bot  { background: rgba(46, 204, 113, 0.08); }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 st.title("🛠️ Fix-It RAG Bot")
-st.caption("RAG chatbot over example technical documentation PDFs (synchronization and permissions examples)")
-#st.caption(f"{PROJECT_CODENAME} • hard work defines it")
+st.caption(
+    "RAG chatbot over example technical documentation PDFs (synchronization and permissions examples)"
+)
+# st.caption(f"{PROJECT_CODENAME} • hard work defines it")
 
 # -------------------------------
 # Retrieval guardrails (define BEFORE use)
@@ -51,12 +56,9 @@ show_context = st.sidebar.checkbox("Show retrieved context", value=False)
 st.sidebar.caption("Default strictness tuned for documentation accuracy (1.25)")
 DEFAULT_MAX_DISTANCE = 1.25
 max_distance = st.sidebar.slider(
-    "Max distance allowed (lower = stricter)",
-    0.2,
-    2.0,
-    DEFAULT_MAX_DISTANCE,
-    0.05
+    "Max distance allowed (lower = stricter)", 0.2, 2.0, DEFAULT_MAX_DISTANCE, 0.05
 )
+
 
 # -------------------------------
 # Keyword overlap guardrail
@@ -67,12 +69,12 @@ def keyword_overlap_ok(question: str, kept_texts: list[str]) -> bool:
     if not q_terms:
         return True
 
-    ctx_terms = set(
-        re.findall(r"[A-Za-z]{3,}", " ".join(kept_texts).lower())
-    )
+    ctx_terms = set(re.findall(r"[A-Za-z]{3,}", " ".join(kept_texts).lower()))
 
     # Require at least one meaningful shared term
     return len(q_terms.intersection(ctx_terms)) >= 1
+
+
 # -------------------------------
 # Scope coverage guardrail (NEW)
 # -------------------------------
@@ -81,12 +83,18 @@ def scope_coverage_ok(question: str, kept_texts: list[str]) -> bool:
     ctx = " ".join(kept_texts).lower()
 
     # If the user asks tenant-scoped questions, require tenant language in the retrieved text.
-    tenant_scoped = bool(re.search(r"\btenant\b|\bper[-\s]?tenant\b|\bspecific tenant\b", q))
+    tenant_scoped = bool(
+        re.search(r"\btenant\b|\bper[-\s]?tenant\b|\bspecific tenant\b", q)
+    )
     if tenant_scoped:
-        return bool(re.search(r"\btenant\b|\bper[-\s]?tenant\b|\btenant[-\s]?specific\b", ctx))
+        return bool(
+            re.search(r"\btenant\b|\bper[-\s]?tenant\b|\btenant[-\s]?specific\b", ctx)
+        )
 
     # You can add more scopes later (version/env/role) the same way.
     return True
+
+
 def multi_intent_coverage_ok(question: str, kept_texts: list[str]) -> bool:
     q = question.lower()
     ctx = " ".join(kept_texts).lower()
@@ -100,6 +108,7 @@ def multi_intent_coverage_ok(question: str, kept_texts: list[str]) -> bool:
         return has_sync and has_perms
 
     return True
+
 
 # -------------------------------
 # PDF Extraction (Text + OCR)
@@ -118,6 +127,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
                     pass
     return text.strip()
 
+
 # -------------------------------
 # Build Vector Store
 # -------------------------------
@@ -135,6 +145,7 @@ def build_vectorstore(text: str):
 
     vs = FAISS.from_texts(chunks, embeddings)
     return vs, chunks
+
 
 # -------------------------------
 # Load PDFs at startup
@@ -180,72 +191,72 @@ question = st.text_input("Question", placeholder="e.g., How do I sync data on mo
 if st.button("Get Answer") and question:
     if st.session_state.vectorstore is None:
         st.error("Knowledge base not loaded.")
-    else:
-        docs_with_scores = st.session_state.vectorstore.similarity_search_with_score(question, k=k)
+        st.stop()
 
-        SAFE_MESSAGE = (
-            "This information isn’t found in the available documentation.<br>"
-            "Please refer to the source material or your tenant configuration."
+    docs_with_scores = st.session_state.vectorstore.similarity_search_with_score(
+        question, k=k
+    )
+
+    if not docs_with_scores:
+        st.markdown(
+            f'<div class="chat-bubble bot"><b>Bot:</b><br>{NOT_FOUND_MESSAGE}</div>',
+            unsafe_allow_html=True,
         )
+        st.stop()
 
-        if not docs_with_scores:
-            st.markdown(
-                f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
-                unsafe_allow_html=True
+    kept = []
+    for d, score in docs_with_scores:
+        text = d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
+        if text and score <= max_distance:
+            kept.append((text, score))
+
+    st.markdown(
+        f'<div class="chat-bubble user"><b>You:</b><br>{question}</div>',
+        unsafe_allow_html=True,
+    )
+
+    kept_texts = [t for t, _ in kept]
+    passes_keywords = keyword_overlap_ok(question, kept_texts)
+    passes_scope = scope_coverage_ok(question, kept_texts)
+    passes_multi = multi_intent_coverage_ok(question, kept_texts)
+
+    if (
+        len(kept) < min_hit_count
+        or not passes_keywords
+        or not passes_scope
+        or not passes_multi
+    ):
+        if not passes_scope:
+            msg = (
+                "I found documentation related to your topic, but it doesn’t cover the "
+                "**tenant-specific** part of your question.<br>"
+                "Please check tenant configuration or provide tenant-scoped documentation."
             )
-            st.stop()
-
-        best_doc, best_score = docs_with_scores[0]
-        print("DEBUG best_score:", best_score)
-
-        kept = []
-        for d, score in docs_with_scores:
-            text = d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
-            if text and score <= max_distance:
-                kept.append((text, score))
-        st.write("DEBUG kept_count:", len(kept))
+        elif not passes_multi:
+            msg = (
+                "I found documentation related to part of your question, but it does not cover "
+                "the full combination (e.g., **sync + permissions**).<br>"
+                "Please provide documentation that links these topics, or rephrase to one topic."
+            )
+        else:
+            msg = NOT_FOUND_MESSAGE
 
         st.markdown(
-            f'<div class="chat-bubble user"><b>You:</b><br>{question}</div>',
-            unsafe_allow_html=True
+            f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
+            unsafe_allow_html=True,
         )
+else:
+    context = "\n\n".join(t for t, _ in kept)
 
-        kept_texts = [t for t, _ in kept]
-        passes_keywords = keyword_overlap_ok(question, kept_texts)
-        passes_scope = scope_coverage_ok(question, kept_texts)
-        passes_multi = multi_intent_coverage_ok(question, kept_texts)
-        # ✅ THIS BLOCK MUST BE INDENTED INSIDE THE BUTTON HANDLER
-        if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
-            if not passes_scope:
-                msg = (
-                    "I found documentation related to your topic, but it doesn’t cover the "
-                    "**tenant-specific** part of your question.<br>"
-                    "Please check tenant configuration or provide tenant-scoped documentation."
-                )
-            else:
-                msg = NOT_FOUND_MESSAGE
-            if not passes_multi:
-                msg = (
-                    "I found documentation about permissions, but it does not cover the **sync** part of your question.<br>"
-                    "Please provide documentation that links sync behavior with permissions, or rephrase the question to one topic."
-                )
-            st.markdown(
-                f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
-                unsafe_allow_html=True
-            )
+    st.markdown(
+        '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
 
-        else:
-            context = "\n\n".join(t for t, _ in kept)
-
-            st.markdown(
-                '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
-
-            if show_context:
-                with st.expander("Retrieved context (with scores)"):
-                    for t, s in kept:
-                        st.write(f"Score: {s:.4f}")
-                        st.text(t)
-                        st.divider()
+    if show_context:
+        with st.expander("Retrieved context (with scores)"):
+            for t, s in kept:
+                st.write(f"Score: {s:.4f}")
+                st.text(t)
+                st.divider()

@@ -12,7 +12,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 # -------------------------------
 st.set_page_config(page_title="Fix-It RAG Bot", page_icon="🛠️")
 
-PROJECT_CODENAME = "YV"
+#PROJECT_CODENAME = "YV"
 
 # -------------------------------
 # UI Style
@@ -30,7 +30,7 @@ st.markdown("""
 
 st.title("🛠️ Fix-It RAG Bot")
 st.caption("RAG chatbot over example technical documentation PDFs (synchronization and permissions examples)")
-st.caption(f"{PROJECT_CODENAME} • hard work defines it")
+#st.caption(f"{PROJECT_CODENAME} • hard work defines it")
 
 # -------------------------------
 # Retrieval guardrails (define BEFORE use)

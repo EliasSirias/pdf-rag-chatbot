@@ -1,16 +1,22 @@
-import os
 import streamlit as st
 import pdfplumber
 import pytesseract
+from pathlib import Path
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
-#PROJECT_CODENAME = "YV"
+
 # -------------------------------
-# Config + UI Style
+# Config (must be first Streamlit call)
 # -------------------------------
 st.set_page_config(page_title="Fix-It RAG Bot", page_icon="🛠️")
 
+PROJECT_CODENAME = "YV"
+
+# -------------------------------
+# UI Style
+# -------------------------------
 st.markdown("""
 <style>
 .block-container { padding-top: 2rem; max-width: 950px; }
@@ -24,9 +30,22 @@ st.markdown("""
 
 st.title("🛠️ Fix-It RAG Bot")
 st.caption("RAG chatbot over example technical documentation PDFs (synchronization and permissions examples)")
+st.caption(f"{PROJECT_CODENAME} • hard work defines it")
+
+# -------------------------------
+# Retrieval guardrails (define BEFORE use)
+# -------------------------------
+NOT_FOUND_MESSAGE = (
+    "This information isn’t found in the available documentation.<br>"
+    "Please check your core tenant configuration and source material.<br>"
+    "If needed, escalate to the appropriate team members."
+)
 
 st.sidebar.header("Settings")
 k = st.sidebar.slider("Top-K retrieved chunks", 1, 4, 1)
+min_hit_count = st.sidebar.slider("Min matching chunks required", 1, 4, 1)
+# For LangChain FAISS, score is often L2 distance (lower = better). Tune as needed.
+max_distance = st.sidebar.slider("Max distance allowed (lower = stricter)", 0.2, 2.0, 0.9, 0.05)
 show_context = st.sidebar.checkbox("Show retrieved context", value=False)
 
 # -------------------------------
@@ -67,8 +86,6 @@ def build_vectorstore(text: str):
 # -------------------------------
 # Load PDFs at startup
 # -------------------------------
-from pathlib import Path
-
 BASE_DIR = Path(__file__).resolve().parent
 
 PDF_PATHS = [
@@ -88,7 +105,7 @@ if st.session_state.vectorstore is None:
                 st.error(f"Missing file: {path}")
                 st.stop()
 
-            all_text.append(extract_text_from_pdf(path))
+            all_text.append(extract_text_from_pdf(str(path)))
             all_text.append("\n\n=== DOCUMENT BREAK ===\n\n")
 
         extracted_text = "".join(all_text)
@@ -110,17 +127,36 @@ if st.button("Get Answer") and question:
     if st.session_state.vectorstore is None:
         st.error("Knowledge base not loaded.")
     else:
-        docs = st.session_state.vectorstore.similarity_search(question, k=k)
+        docs_with_scores = st.session_state.vectorstore.similarity_search_with_score(question, k=k)
 
-        context = "\n\n".join(
-            d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
-            for d in docs
+        kept = []
+        for d, score in docs_with_scores:
+            text = d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
+            if text and score <= max_distance:
+                kept.append((text, score))
+
+        st.markdown(
+            f'<div class="chat-bubble user"><b>You:</b><br>{question}</div>',
+            unsafe_allow_html=True
         )
 
-        st.markdown(f'<div class="chat-bubble user"><b>You:</b><br>{question}</div>', unsafe_allow_html=True)
-        st.markdown('<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
+        if len(kept) < min_hit_count:
+            st.markdown(
+                f'<div class="chat-bubble bot"><b>Bot:</b><br>{NOT_FOUND_MESSAGE}</div>',
+                unsafe_allow_html=True
+            )
+        else:
+            context = "\n\n".join(t for t, _ in kept)
 
-        if show_context:
-            with st.expander("Retrieved context"):
-                st.text(context)
+            st.markdown(
+                '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
+                unsafe_allow_html=True
+            )
+            st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
+
+            if show_context:
+                with st.expander("Retrieved context (with scores)"):
+                    for t, s in kept:
+                        st.write(f"Score: {s:.4f}")
+                        st.text(t)
+                        st.divider()

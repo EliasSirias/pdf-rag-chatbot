@@ -23,7 +23,7 @@ st.markdown("""
 .block-container { padding-top: 2rem; max-width: 950px; }
 .stButton>button { border-radius: 14px; padding: 0.6rem 1rem; font-weight: 600; }
 .chat-bubble { padding: 0.9rem 1rem; border-radius: 16px; margin: 0.4rem 0;
-  border: 1px solid rgba(49,51,63,0.2); }
+border: 1px solid rgba(49,51,63,0.2); }
 .user { background: rgba(0, 122, 255, 0.08); }
 .bot  { background: rgba(46, 204, 113, 0.08); }
 </style>
@@ -212,31 +212,33 @@ if st.button("Get Answer") and question:
         passes_keywords = keyword_overlap_ok(question, kept_texts)
         passes_scope = scope_coverage_ok(question, kept_texts)
 
-        if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
-            if not passes_scope:
-                msg = (
-                     "I found documentation related to your topic, but it doesn’t cover the **tenant-specific** part of your question.<br>"
-                     "Please check tenant configuration or provide tenant-scoped documentation."
-                )
-             else:
-                msg = NOT_FOUND_MESSAGE
+if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
+    if not passes_scope:
+        msg = (
+            "I found documentation related to your topic, but it doesn’t cover the "
+            "**tenant-specific** part of your question.<br>"
+            "Please check tenant configuration or provide tenant-scoped documentation."
+        )
+    else:
+        msg = NOT_FOUND_MESSAGE
 
-            st.markdown(
-                f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
-                unsafe_allow_html=True
-            )
-          else:
-              context = "\n\n".join(t for t, _ in kept)
+    st.markdown(
+        f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
+        unsafe_allow_html=True
+    )
 
-            st.markdown(
-                '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
+else:
+    context = "\n\n".join(t for t, _ in kept)
 
-            if show_context:
-                with st.expander("Retrieved context (with scores)"):
-                    for t, s in kept:
-                        st.write(f"Score: {s:.4f}")
-                        st.text(t)
-                        st.divider()
+
+    st.markdown(
+        '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(f'<div class="chat-bubble bot">{context}</div>', unsafe_allow_html=True)
+    if show_context:
+        with st.expander("Retrieved context (with scores)"):
+            for t, s in kept:
+                st.write(f"Score: {s:.4f}")
+                st.text(t)
+                st.divider()

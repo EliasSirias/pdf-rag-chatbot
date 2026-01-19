@@ -73,6 +73,20 @@ def keyword_overlap_ok(question: str, kept_texts: list[str]) -> bool:
 
     # Require at least one meaningful shared term
     return len(q_terms.intersection(ctx_terms)) >= 1
+# -------------------------------
+# Scope coverage guardrail (NEW)
+# -------------------------------
+def scope_coverage_ok(question: str, kept_texts: list[str]) -> bool:
+    q = question.lower()
+    ctx = " ".join(kept_texts).lower()
+
+    # If the user asks tenant-scoped questions, require tenant language in the retrieved text.
+    tenant_scoped = bool(re.search(r"\btenant\b|\bper[-\s]?tenant\b|\bspecific tenant\b", q))
+    if tenant_scoped:
+        return bool(re.search(r"\btenant\b|\bper[-\s]?tenant\b|\btenant[-\s]?specific\b", ctx))
+
+    # You can add more scopes later (version/env/role) the same way.
+    return True
 
 # -------------------------------
 # PDF Extraction (Text + OCR)
@@ -163,14 +177,14 @@ if st.button("Get Answer") and question:
         # Use the vectorstore you already have in session_state
         results = st.session_state.vectorstore.similarity_search_with_score(question, k=4)
 
-        if not results:
+        if not docs_with_scores:
             st.markdown(
                 f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
                 unsafe_allow_html=True
             )
             st.stop()
 
-        best_doc, best_score = results[0]
+        best_doc, best_score = docs_with_scores[0]
         print("DEBUG best_score:", best_score)
 
         # TEMP: "weak" threshold — we'll tune after you see the scores
@@ -183,11 +197,11 @@ if st.button("Get Answer") and question:
 
 
         kept = []
-        st.write("DEBUG kept_count:", len(kept))
         for d, score in docs_with_scores:
             text = d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
             if text and score <= max_distance:
                 kept.append((text, score))
+        st.write("DEBUG kept_count:", len(kept))
 
         st.markdown(
             f'<div class="chat-bubble user"><b>You:</b><br>{question}</div>',
@@ -196,14 +210,23 @@ if st.button("Get Answer") and question:
 
         kept_texts = [t for t, _ in kept]
         passes_keywords = keyword_overlap_ok(question, kept_texts)
+        passes_scope = scope_coverage_ok(question, kept_texts)
 
-        if len(kept) < min_hit_count or not passes_keywords:
+        if len(kept) < min_hit_count or not passes_keywords or not passes_scope:
+            if not passes_scope:
+                msg = (
+                     "I found documentation related to your topic, but it doesn’t cover the **tenant-specific** part of your question.<br>"
+                     "Please check tenant configuration or provide tenant-scoped documentation."
+                )
+            else:
+                msg = NOT_FOUND_MESSAGE
+
             st.markdown(
-                f'<div class="chat-bubble bot"><b>Bot:</b><br>{NOT_FOUND_MESSAGE}</div>',
+                f'<div class="chat-bubble bot"><b>Bot:</b><br>{msg}</div>',
                 unsafe_allow_html=True
             )
-        else:
-            context = "\n\n".join(t for t, _ in kept)
+          else:
+              context = "\n\n".join(t for t, _ in kept)
 
             st.markdown(
                 '<div class="chat-bubble bot"><b>Bot:</b><br>Answer retrieved from documentation:</div>',

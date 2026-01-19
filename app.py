@@ -99,9 +99,10 @@ def build_vectorstore(text: str):
 BASE_DIR = Path(__file__).resolve().parent
 
 PDF_PATHS = [
-    BASE_DIR / "docs" / "mobile_sync_troubleshooting_v1.pdf",
-    BASE_DIR / "docs" / "scribe_group_permissions_v1.pdf",
+    BASE_DIR / "docs" / "mobile_sync_troubleshooting_generic_v1.pdf",
+    BASE_DIR / "docs" / "manage_group_permissions_generic_v1.pdf",
 ]
+
 
 st.session_state.setdefault("vectorstore", None)
 st.session_state.setdefault("chunks", None)

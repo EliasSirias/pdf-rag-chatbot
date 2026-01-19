@@ -218,7 +218,7 @@ if st.button("Get Answer") and question:
                      "I found documentation related to your topic, but it doesn’t cover the **tenant-specific** part of your question.<br>"
                      "Please check tenant configuration or provide tenant-scoped documentation."
                 )
-            else:
+             else:
                 msg = NOT_FOUND_MESSAGE
 
             st.markdown(

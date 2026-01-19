@@ -174,15 +174,16 @@ if st.button("Get Answer") and question:
         print("DEBUG best_score:", best_score)
 
         # TEMP: "weak" threshold — we'll tune after you see the scores
-        if best_score > 0.6:
-            st.markdown(
-                f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
-                unsafe_allow_html=True
-            )
-            st.stop()
+        #if best_score > 0.6:
+            #st.markdown(
+                #f'<div class="chat-bubble bot"><b>Bot:</b><br>{SAFE_MESSAGE}</div>',
+                #unsafe_allow_html=True
+            #)
+            #st.stop()
 
 
         kept = []
+	st.write("DEBUG kept_count:", len(kept))
         for d, score in docs_with_scores:
             text = d.page_content.replace("=== DOCUMENT BREAK ===", "").strip()
             if text and score <= max_distance:

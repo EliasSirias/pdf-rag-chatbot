@@ -47,6 +47,14 @@ min_hit_count = st.sidebar.slider("Min matching chunks required", 1, 4, 1)
 # For LangChain FAISS, score is often L2 distance (lower = better). Tune as needed.
 max_distance = st.sidebar.slider("Max distance allowed (lower = stricter)", 0.2, 2.0, 0.9, 0.05)
 show_context = st.sidebar.checkbox("Show retrieved context", value=False)
+DEFAULT_MAX_DISTANCE = 1.50
+max_distance = st.sidebar.slider(
+    "Max distance allowed (lower = stricter)",
+    0.2,
+    2.0,
+    DEFAULT_MAX_DISTANCE,
+    0.05
+)
 
 # -------------------------------
 # PDF Extraction (Text + OCR)

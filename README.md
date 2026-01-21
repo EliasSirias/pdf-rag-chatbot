@@ -1,7 +1,7 @@
 ##Powered By YVSearch
 Hard Work Defines it.
 
-# PDF RAG Chatbot
+#yv-search-demo
 
 This project implements a Retrieval-Augmented Generation (RAG) chatbot that answers questions based on the content of PDF documents.
 
